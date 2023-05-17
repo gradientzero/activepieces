@@ -8,6 +8,7 @@ import { calcom } from '@activepieces/piece-cal-com';
 import { calendly } from '@activepieces/piece-calendly';
 import { clickup } from '@activepieces/piece-clickup';
 import { csv } from '@activepieces/piece-csv';
+import { ecomon } from '@activepieces/piece-ecomon';
 import { discord } from '@activepieces/piece-discord';
 import { drip } from '@activepieces/piece-drip';
 import { dropbox } from '@activepieces/piece-dropbox';
@@ -89,6 +90,7 @@ export const pieces: Piece[] = [
     discord,
     drip,
     dropbox,
+    ecomon,
     figma,
     freshsales,
     generatebanners,
