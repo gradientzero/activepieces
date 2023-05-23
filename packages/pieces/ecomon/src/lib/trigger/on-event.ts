@@ -1,17 +1,12 @@
-import { newUuid } from "../shared";
-import {
-    authProp,
-    eventTypeProp,
-    organizationProp,
-    SubscribeWebhookParams,
-    UnsubscribeWebhookParams,
-    subscribeWebhook,
-    unsubscribeWebhook
-} from "../common";
+import { TriggerStrategy, createTrigger } from "@activepieces/pieces-framework";
+import { authProp } from "../common/auth";
+import { organizationProp } from "../common/organization";
+import { ecomonEventTypeProp, manageEventTypeProp } from "../common/event";
+import { newUuid } from "../common/uuid";
+import { SubscribeWebhookParams, UnsubscribeWebhookParams, subscribeWebhook, unsubscribeWebhook } from "../common/webhook";
+import { ecomonBaseUrlProp, manageBaseUrlProp } from "../common/baseUrl";
 
-import { DropdownState, MultiSelectDropdownProperty, OAuth2PropertyValue, Property, TriggerStrategy, createTrigger } from "@activepieces/pieces-framework";
-
-const STORE_KEY = 'manage_new_event_trigger'
+const STORE_KEY = '_new_event_trigger'
 export const newOnEventTrigger = createTrigger({
     name: 'new_on_event_trigger',
     displayName: 'New Events Trigger',
@@ -24,108 +19,49 @@ export const newOnEventTrigger = createTrigger({
     },
     props: {
         authentication: authProp,
-        organizationUuid: Property.ShortText({
-			displayName: 'Organization Uuid',
-			required: true,
-		}),
-        eventTypeSelected: Property.MultiSelectDropdown({
-            displayName: 'Events To Listen To',
-            description: 'Select events to trigger on',
-            required: true,
-            refreshers: ['authentication'],
-            async options (propsValue) {
-                const auth = propsValue['authentication'] as OAuth2PropertyValue
-                if (!auth) {
-                    return {
-                        disabled: true,
-                        placeholder: 'Authentication is required',
-                        options: [],
-                    }
-                }
-                const options: { label: string; value: string; }[] = [
-                    {
-                        label: 'Manage (Organizational Service)',
-                        value: 'manage'
-                    },
-                    {
-                        label: 'Ecomon (Domain-Specific Service)',
-                        value: 'ecomon'
-                    }
-                ];
-                return {
-                    disabled: false,
-                    placeholder: 'Select Service',
-                    options,
-                  }
-            },
-        }),
-        /*
-        service: Property.Dropdown({
-			displayName: 'Service',
-            description: 'Select a service: Manage or Ecomon',
-			required: true,
-            refreshers: ['authentication'],
-            async options (propsValue) {
-                const auth = propsValue['authentication'] as OAuth2PropertyValue
-                if (!auth) {
-                    return {
-                        disabled: true,
-                        placeholder: 'Authentication is required',
-                        options: [],
-                    }
-                }
-                const options: { label: string; value: string; }[] = [
-                    {
-                        label: 'Manage (Organizational Service)',
-                        value: 'manage'
-                    },
-                    {
-                        label: 'Ecomon (Domain-Specific Service)',
-                        value: 'ecomon'
-                    }
-                ];
-                return {
-                    disabled: false,
-                    placeholder: 'Select Service',
-                    options,
-                  }
-            },
-		}),*/
-        eventTypeName: Property.ShortText({
-			displayName: 'Event Typead',
-			required: true,
-		}),
-        //organization: organizationProp,
-        //eventType: eventTypeProp,
+        manageBaseUrl: manageBaseUrlProp,
+        ecomonBaseUrl: ecomonBaseUrlProp,
+        organizationUuid: organizationProp,
+        manageEventType: manageEventTypeProp,
+        ecomonEventType: ecomonEventTypeProp
     },
     type: TriggerStrategy.WEBHOOK,
     onEnable: async (context) => {
-        /*const newAggregateUuid = newUuid()
+        const newAggregateUuid = newUuid()
+        const manageBaseUrl = context.propsValue.manageBaseUrl
+        const ecomonBaseUrl = context.propsValue.ecomonBaseUrl
         const organizationUuid = context.propsValue.organizationUuid
-        const serviceUrl = `${BaseUrl}/api/organizations/${organizationUuid}/webhooks`;
-        const eventType = context.propsValue.eventType ?? 'invalid'
-        const bearerToken = `sa=${context.propsValue.authentication}`
-        const params: SubscribeWebhookParams = {
-            newAggregateUuid: newAggregateUuid,
-            serviceUrl: serviceUrl,
-            webhookUrl: context.webhookUrl,
-            eventType: eventType,
-            bearerToken: bearerToken
+        const manageEventType = context.propsValue.manageEventType ?? undefined
+        const ecomonEventType = context.propsValue.ecomonEventType ?? undefined
+        const baseUrl = manageEventType ? manageBaseUrl : ecomonBaseUrl
+        const serviceUrl = `${baseUrl}/api/organizations/${organizationUuid}/webhooks`;
+        const eventType = manageEventType ? manageEventType : ecomonEventType
+        const valid = organizationUuid && eventType && baseUrl
+        if (valid) {
+            const bearerToken = `sa=${context.propsValue.authentication}`
+            const params: SubscribeWebhookParams = {
+                newAggregateUuid: newAggregateUuid,
+                serviceUrl: serviceUrl,
+                webhookUrl: context.webhookUrl,
+                eventType: eventType,
+                bearerToken: bearerToken
+            }
+            const { success } = await subscribeWebhook(params)
+            if (success) {
+                await context.store?.put<TriggerData>(STORE_KEY, {
+                    service: manageEventType ? 'manage' : 'ecomon',
+                    organizationUuid: organizationUuid,
+                    aggregateUuid: newAggregateUuid,
+                })
+            }
         }
-        const { success } = await subscribeWebhook(params)
-        if (success) {
-            await context.store?.put<TriggerData>(STORE_KEY, {
-                aggregateUuid: newAggregateUuid,
-            })
-        }
-        */
     },
     onDisable: async (context) => {
-        /*
         const storeData = await context.store?.get<TriggerData>(STORE_KEY)
         if (storeData) {
-            const organizationUuid = context.propsValue.organization
-            const serviceUrl = `${BaseUrl}/api/organizations/${organizationUuid}/webhooks/${storeData.aggregateUuid}`;
+            const baseUrl = storeData.service === 'manage' ? context.propsValue.manageBaseUrl : context.propsValue.ecomonBaseUrl
+            const organizationUuid = storeData.organizationUuid
+            const serviceUrl = `${baseUrl}/api/organizations/${organizationUuid}/webhooks/${storeData.aggregateUuid}`;
             const bearerToken = `sa=${context.propsValue.authentication}`
             const params: UnsubscribeWebhookParams = {
                 serviceUrl: serviceUrl,
@@ -134,7 +70,6 @@ export const newOnEventTrigger = createTrigger({
             await unsubscribeWebhook(params)
             await context.store?.delete(STORE_KEY)
         }
-        */
     },
     run: async (context) => {
         if ('item' in context.payload.body) {
@@ -145,5 +80,7 @@ export const newOnEventTrigger = createTrigger({
 });
 
 type TriggerData = {
+    service: string
+    organizationUuid: string
     aggregateUuid: string
 };

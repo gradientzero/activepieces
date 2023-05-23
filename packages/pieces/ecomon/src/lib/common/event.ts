@@ -1,16 +1,51 @@
-import { ecomonCommon } from "../shared";
 import { AuthenticationType, HttpMethod, HttpRequest, httpClient } from "@activepieces/pieces-common";
-import { OAuth2PropertyValue, Property, DropdownState } from "@activepieces/pieces-framework"
+import { Property } from "@activepieces/pieces-framework"
 
+export const manageEventTypeProp = Property.Dropdown({
+  displayName: 'EventType (manage)',
+  description: 'Select event for this trigger',
+  required: false,
+  refreshers: ['manageBaseUrl', 'authentication'],
+  async options(propsValue) {
+    const manageBaseUrl = propsValue['manageBaseUrl']
+    const auth = propsValue['authentication']
+    if (!manageBaseUrl || !auth) {
+      return {
+        disabled: true,
+        placeholder: 'Select Event Type',
+        options: [],
+      }
+    }
+    const options: { label: string; value: string; }[] = [];
+    const { responseBody } = await getEventTypes({
+      token: `sa=${auth}`,
+      url: `${manageBaseUrl}/api/webhooks/eventTypes`,
+    });
+    if (responseBody.items) {
+      responseBody.items.forEach(item => {
+        options.push({
+          label: item.eventType,
+          value: item.eventType,
+        })
+      })
+    }
+    return {
+      disabled: false,
+      placeholder: 'EventType',
+      options,
+    }
+  },
+});
 
-export const eventTypeProp = Property.Dropdown<string>({
-    displayName: 'Manage Event Type',
-    description: 'Manage Event Type',
-    required: true,
-    refreshers: ['authentication'],
+export const ecomonEventTypeProp = Property.Dropdown({
+    displayName: 'EventType (ecomon)',
+    description: 'Select event for this trigger',
+    required: false,
+    refreshers: ['ecomonBaseUrl', 'authentication'],
     async options(propsValue) {
-      const auth = propsValue['authentication'] as OAuth2PropertyValue
-      if (!auth) {
+      const ecomonBaseUrl = propsValue['ecomonBaseUrl']
+      const auth = propsValue['authentication']
+      if (!ecomonBaseUrl || !auth) {
         return {
           disabled: true,
           placeholder: 'Select Event Type',
@@ -18,35 +53,17 @@ export const eventTypeProp = Property.Dropdown<string>({
         }
       }
       const options: { label: string; value: string; }[] = [];
-      // request from manage api
-      {
-        const { responseBody } = await getEventTypes({
-          token: `sa=${propsValue.authentication}`,
-          url: `${ecomonCommon.manageBaseUrl}/api/webhooks/eventTypes`,
-        });
-        if (responseBody.items) {
-          responseBody.items.forEach(item => {
-            options.push({
-              label: item.eventType + ' (manage)',
-              value: item.eventType,
-            })
+      const { responseBody } = await getEventTypes({
+        token: `sa=${auth}`,
+        url: `${ecomonBaseUrl}/api/webhooks/eventTypes`,
+      });
+      if (responseBody.items) {
+        responseBody.items.forEach(item => {
+          options.push({
+            label: item.eventType,
+            value: item.eventType,
           })
-        }
-      }
-      // request from ecomon api
-      {
-        const { responseBody } = await getEventTypes({
-          token: `sa=${propsValue.authentication}`,
-          url: `${ecomonCommon.ecomonBaseUrl}/api/webhooks/eventTypes`,
-        });
-        if (responseBody.items) {
-          responseBody.items.forEach(item => {
-            options.push({
-              label: item.eventType + ' (manage)',
-              value: item.eventType,
-            })
-          })
-        }
+        })
       }
       return {
         disabled: false,

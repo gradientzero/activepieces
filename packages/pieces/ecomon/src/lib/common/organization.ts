@@ -1,15 +1,15 @@
-import { ecomonCommon } from "../shared";
 import { AuthenticationType, HttpMethod, HttpRequest, httpClient } from "@activepieces/pieces-common";
-import { OAuth2PropertyValue, Property } from "@activepieces/pieces-framework";
+import { Property } from "@activepieces/pieces-framework";
 
 export const organizationProp = Property.Dropdown<string>({
   displayName: 'Organization',
   description: 'Organization to use',
   required: true,
-  refreshers: ['authentication'],
+  refreshers: ['manageBaseUrl', 'authentication'],
   async options(propsValue) {
-    const auth = propsValue['authentication'] as OAuth2PropertyValue
-    if (!auth) {
+    const manageBaseUrl = propsValue['manageBaseUrl']
+    const auth = propsValue['authentication']
+    if (!manageBaseUrl || !auth) {
       return {
         disabled: true,
         placeholder: 'connect specific organization',
@@ -17,8 +17,8 @@ export const organizationProp = Property.Dropdown<string>({
       }
     }
     const { responseBody } = await manageObtainIdentity({
-      token: `sa=${propsValue.authentication}`,
-      url: `${ecomonCommon.manageBaseUrl}/${ecomonCommon.obtainIdentity}`,
+      token: `sa=${auth}`,
+      url: `${manageBaseUrl}/api/identities/obtain_identity`,
     });
     const options: { label: string; value: string; }[] = [];
     if (responseBody.item) {
