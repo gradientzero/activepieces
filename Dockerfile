@@ -1,4 +1,4 @@
-FROM activepieces/ap-base:3
+FROM --platform=linux/amd64 activepieces/ap-base:3
 
 # Install Nginx and gettext for envsubst
 RUN apt-get update && \

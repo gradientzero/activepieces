@@ -51,3 +51,4 @@ packages/backend/.env
 # produced by unsandboxed engine execution
 .pnpm-store
 .notes
+build.log

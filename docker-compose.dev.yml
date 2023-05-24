@@ -10,6 +10,7 @@ services:
       AP_REDIS_HOST: redis
       AP_EXECUTION_MODE: UNSANDBOXED
     user: 1000:1000
+    privileged: true
     ports:
      - "3000:3000"
      - "4200:4200"
