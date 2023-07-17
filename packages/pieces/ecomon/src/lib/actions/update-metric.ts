@@ -4,6 +4,7 @@ import { AuthenticationType, HttpMethod, HttpRequest, httpClient } from "@active
 import { ecomonBaseUrlProp, manageBaseUrlProp } from "../common/baseUrl";
 import { organizationProp } from "../common/organization";
 import { metricProp } from "../common/metric";
+import { newUuid } from "../common/uuid";
 
 export const updateMetricValue = createAction({
 	name: 'update_metric_value',
@@ -20,13 +21,18 @@ export const updateMetricValue = createAction({
 			description: 'New Decimal value to send to the specific metric',
 			required: true,
 		}),
+        metricTimestamp: Property.Number({
+			displayName: 'Metric Timestamp (in nanoseconds)',
+			description: 'Integer timestamp in nano-seconds when new metric value was recorded',
+			required: false,
+		}),
 	},
 	async run(context) {
-        const { authentication, metricUuid, ecomonBaseUrl, organizationUuid, metricValue } = context.propsValue;
-        const updated_at = undefined;
+        const { authentication, metricUuid, ecomonBaseUrl, organizationUuid, metricValue, metricTimestamp } = context.propsValue;
+        const valueUid = newUuid()
         const request: HttpRequest = {
             method: HttpMethod.POST,
-            url: `${ecomonBaseUrl}/api/organizations/${organizationUuid}/metrics/${metricUuid}/value`,
+            url: `${ecomonBaseUrl}/api/organizations/${organizationUuid}/metrics/${metricUuid}/values`,
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
@@ -37,8 +43,9 @@ export const updateMetricValue = createAction({
             },
             queryParams: {},
             body: {
+                valueUid: valueUid,
                 value: +metricValue,
-                updatedAt: updated_at ? +updated_at : undefined,
+                recordedAt: metricTimestamp ? +metricTimestamp : undefined,
             }
         };
         const response = await httpClient.sendRequest(request);

@@ -14,7 +14,7 @@ export const newOnEventTrigger = createTrigger({
     sampleData: {
         "enabled": true,
         "organizationUuid": "879d7307-b1df-4945-a219-7f3ea3495364",
-        "webhookUrl": "http://localhost:8050/api/organizations/879d7307-b1df-4945-a219-7f3ea3495364/webhooks",
+        "webhookUrl": "https://ecomon.gradient0.com/app/ecomon/api/organizations/879d7307-b1df-4945-a219-7f3ea3495364/webhooks",
         "eventType": "OrganizationAddedEvent",
     },
     props: {

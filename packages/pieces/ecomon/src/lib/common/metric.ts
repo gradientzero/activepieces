@@ -3,8 +3,8 @@ import { Property } from "@activepieces/pieces-framework"
 
 export const metricProp = Property.Dropdown({
   displayName: 'Metric',
-  description: 'Select metric to update value for',
-  required: false,
+  description: 'Select metric to add new value',
+  required: true,
   refreshers: ['ecomonBaseUrl', 'organizationUuid', 'authentication'],
   async options(propsValue) {
     const ecomonBaseUrl = propsValue['ecomonBaseUrl']
