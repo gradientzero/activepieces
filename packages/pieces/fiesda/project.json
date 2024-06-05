@@ -1,0 +1,36 @@
+{
+  "name": "piece-fiesda",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/pieces/fiesda/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nrwl/js:tsc",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "dist/packages/pieces/fiesda",
+        "tsConfig": "packages/pieces/fiesda/tsconfig.lib.json",
+        "packageJson": "packages/pieces/fiesda/package.json",
+        "main": "packages/pieces/fiesda/src/index.ts",
+        "assets": [
+          "packages/pieces/fiesda/*.md"
+        ],
+        "buildableProjectDepsInPackageJsonType": "dependencies"
+      }
+    },
+    "lint": {
+      "executor": "@nrwl/linter:eslint",
+      "outputs": [
+        "{options.outputFile}"
+      ],
+      "options": {
+        "lintFilePatterns": [
+          "packages/pieces/fiesda/**/*.ts"
+        ]
+      }
+    }
+  },
+  "tags": []
+}

@@ -87,6 +87,8 @@
       "@activepieces/piece-mailer-lite": [
         "packages/pieces/mailer-lite/src/index.ts"
       ],
+      "@activepieces/piece-ecomon": ["packages/pieces/ecomon/src/index.ts"],
+      "@activepieces/piece-fiesda": ["packages/pieces/fiesda/src/index.ts"],
       "@activepieces/piece-mastodon": ["packages/pieces/mastodon/src/index.ts"],
       "@activepieces/piece-matrix": ["packages/pieces/matrix/src/index.ts"],
       "@activepieces/piece-mattermost": [
