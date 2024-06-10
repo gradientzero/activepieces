@@ -1,49 +1,24 @@
-import {ExecutionState} from './execution-state';
+import { Type } from '@sinclair/typebox'
+import { TriggerPayload } from '../../engine'
+import { StepOutput } from './step-output'
 
-export enum ExecutionOutputStatus {
-  FAILED = 'FAILED',
-  INTERNAL_ERROR = 'INTERNAL_ERROR',
-  RUNNING = "RUNNING",
-  SUCCEEDED = 'SUCCEEDED',
-  PAUSED = 'PAUSED',
-  TIMEOUT = 'TIMEOUT',
+export const MAX_LOG_SIZE = 2048 * 1024
+
+export enum ExecutionType {
+    BEGIN = 'BEGIN',
+    RESUME = 'RESUME',
 }
 
-export type ExecutionError = {
-  stepName: string;
-  errorMessage: string;
+export type ExecutionState = {
+    steps: Record<string, StepOutput>
 }
 
-type BaseExecutionOutput<T extends ExecutionOutputStatus> = {
-  status: T;
-  executionState: ExecutionState;
-  duration: number;
-  tasks: number;
-  errorMessage?: ExecutionError;
+export const ExecutionState = Type.Object({
+    steps: Type.Record(Type.String(), Type.Unknown()),
+})
+
+export type ExecutioOutputFile = {
+    executionState: ExecutionState
 }
 
-
-export enum PauseType {
-  DELAY = 'DELAY',
-}
-
-type BasePauseMetadata<T extends PauseType> = {
-  type: T;
-  resumeStepName: string;
-  executionState: ExecutionState;
-}
-
-export type DelayPauseMetadata = BasePauseMetadata<PauseType.DELAY> & {
-  resumeDateTime: string;
-}
-
-export type PauseMetadata = DelayPauseMetadata
-
-
-export type PauseExecutionOutput = BaseExecutionOutput<ExecutionOutputStatus.PAUSED> & {
-  pauseMetadata: PauseMetadata
-}
-
-export type FinishExecutionOutput = BaseExecutionOutput<Exclude<ExecutionOutputStatus, ExecutionOutputStatus.PAUSED>>
-
-export type ExecutionOutput = FinishExecutionOutput | PauseExecutionOutput
+export type ResumePayload = TriggerPayload

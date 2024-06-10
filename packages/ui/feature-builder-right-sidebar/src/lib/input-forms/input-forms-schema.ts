@@ -1,16 +1,24 @@
-import { TriggerType, ActionType, BranchCondition } from '@activepieces/shared';
+import {
+  TriggerType,
+  ActionType,
+  BranchCondition,
+  PackageType,
+  PieceType,
+  SourceCode,
+  LoopOnItemsActionSettings,
+  ActionErrorHandlingOptions,
+} from '@activepieces/shared';
 declare type ConfigsAndTheirValues = { [key: string]: any };
 interface InputFormsSchemaBase {
   type?: ActionType | TriggerType;
 }
-export interface LoopStepInputFormSchema extends InputFormsSchemaBase {
-  items: string;
-}
+export interface LoopStepInputFormSchema
+  extends InputFormsSchemaBase,
+    LoopOnItemsActionSettings {}
 export interface CodeStepInputFormSchema extends InputFormsSchemaBase {
-  artifact?: string;
-  artifactSourceId: string;
-  artifactPackagedId: string;
+  sourceCode: SourceCode;
   input: Record<string, unknown>;
+  errorHandlingOptions: ActionErrorHandlingOptions;
 }
 
 export interface BranchInputFormSchema extends InputFormsSchemaBase {
@@ -21,24 +29,35 @@ export interface ScheduledTriggerInputFormSchema extends InputFormsSchemaBase {
   cronExpression: string;
 }
 
-export interface PieceActionInputFormSchema extends InputFormsSchemaBase {
+type CommonPieceFormsProps = {
+  packageType: PackageType;
+  pieceType: PieceType;
   pieceName: string;
+  pieceDisplayName: string;
   pieceVersion: string;
+};
+export interface PieceActionInputFormSchema
+  extends InputFormsSchemaBase,
+    CommonPieceFormsProps {
   actionName: string;
   input: ConfigsAndTheirValues;
   inputUiInfo: {
     customizedInputs: Record<string, boolean>;
   };
+  errorHandlingOptions?: ActionErrorHandlingOptions;
 }
-export interface ComponentTriggerInputFormSchema extends InputFormsSchemaBase {
-  pieceName: string;
-  pieceVersion: string;
+
+export interface PieceTriggerInputFormSchema
+  extends InputFormsSchemaBase,
+    CommonPieceFormsProps {
   triggerName: string;
   input: ConfigsAndTheirValues;
+  inputUiInfo: {
+    customizedInputs: Record<string, boolean>;
+  };
 }
 
 export type InputFormsSchema =
   | LoopStepInputFormSchema
   | CodeStepInputFormSchema
-  | ScheduledTriggerInputFormSchema
   | PieceActionInputFormSchema;

@@ -1,12 +1,14 @@
 import {
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
+  EventEmitter,
   Input,
+  Output,
 } from '@angular/core';
 import { faInfoCircle } from '@fortawesome/free-solid-svg-icons';
-import { Observable, tap } from 'rxjs';
+import { Observable, Subject, tap } from 'rxjs';
 import { FlowItemDetails, fadeIn400ms } from '@activepieces/ui/common';
+import { ActionBase, TriggerBase } from '@activepieces/pieces-framework';
 
 @Component({
   selector: 'app-step-type-item',
@@ -18,8 +20,8 @@ import { FlowItemDetails, fadeIn400ms } from '@activepieces/ui/common';
 export class StepTypeItemComponent {
   _flowItemDetails: FlowItemDetails;
   _flowItemDetails$: Observable<FlowItemDetails | undefined>;
+  @Output() suggestionClicked = new EventEmitter<ActionBase | TriggerBase>();
   @Input() clickable = true;
-  @Input() showDocsLink = false;
   @Input() set flowItemDetails(value: FlowItemDetails) {
     this._flowItemDetails = value;
     this.loadStepIcon(this._flowItemDetails.logoUrl || '');
@@ -36,20 +38,20 @@ export class StepTypeItemComponent {
       );
     }
   }
-  stepIconUrl = '';
+  loadingLogo$: Subject<boolean> = new Subject<boolean>();
   faInfo = faInfoCircle;
-  hover = false;
-  constructor(private cd: ChangeDetectorRef) {}
+  constructor() {
+    this.loadingLogo$.next(true);
+  }
 
   loadStepIcon(url: string) {
     const itemIcon = new Image();
     itemIcon.src = url;
     itemIcon.onload = () => {
-      this.stepIconUrl = url;
-      this.cd.detectChanges();
+      this.loadingLogo$.next(false);
     };
   }
   openDocs(url: string) {
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener');
   }
 }

@@ -13,14 +13,14 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SidebarHeaderComponent implements OnChanges {
-  @Input() title: string;
+  @Input() headerTitle: string;
   @Output() closeClicked: EventEmitter<void> = new EventEmitter<void>();
 
   constructor(private cd: ChangeDetectorRef) {}
   ngOnChanges(): void {
     setTimeout(() => {
       //trigger drawerTitle width change detection
-      this.cd.detectChanges();
+      this.cd.markForCheck();
     }, 100);
   }
 }
