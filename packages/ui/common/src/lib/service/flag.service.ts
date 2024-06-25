@@ -1,8 +1,13 @@
-import { ApEdition, ApFlagId } from '@activepieces/shared';
+import {
+  ApEdition,
+  ApFlagId,
+  ThirdPartyAuthnProvidersToShowMap,
+} from '@activepieces/shared';
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { map, Observable, shareReplay } from 'rxjs';
 import { environment } from '../environments/environment';
+import { gt } from 'semver';
 
 type FlagsMap = Record<string, boolean | string | object | undefined>;
 
@@ -10,45 +15,55 @@ type FlagsMap = Record<string, boolean | string | object | undefined>;
   providedIn: 'root',
 })
 export class FlagService {
-  flags$: Observable<FlagsMap> | undefined;
+  private flags$: Observable<FlagsMap> | undefined;
 
   constructor(private http: HttpClient) {}
 
   getAllFlags() {
     if (!this.flags$) {
-      this.flags$ = this.http
-        .get<FlagsMap>(environment.apiUrl + '/flags')
-        .pipe(shareReplay(1));
+      this.flags$ = this.initialiseFlags();
     }
     return this.flags$;
+  }
+  reinitialiseFlags() {
+    this.flags$ = this.initialiseFlags();
+  }
+  private initialiseFlags() {
+    return this.http
+      .get<FlagsMap>(environment.apiUrl + '/flags')
+      .pipe(shareReplay(1));
+  }
+
+  getStringFlag(flag: ApFlagId): Observable<string> {
+    return this.getAllFlags().pipe(
+      map((value) => {
+        return value[flag] as string;
+      })
+    );
+  }
+
+  getArrayFlag(flag: ApFlagId): Observable<string[]> {
+    return this.getAllFlags().pipe(
+      map((value) => {
+        return value[flag] as string[];
+      })
+    );
+  }
+
+  getThirdPartyProvidersMap() {
+    return this.getAllFlags().pipe(
+      map((res) => {
+        return res[
+          ApFlagId.THIRD_PARTY_AUTH_PROVIDERS_TO_SHOW_MAP
+        ] as ThirdPartyAuthnProvidersToShowMap;
+      })
+    );
   }
 
   isFirstSignIn() {
     return this.getAllFlags().pipe(
       map((value) => {
-        return !value['USER_CREATED'];
-      })
-    );
-  }
-
-  getWarningMessage(): Observable<
-    { title?: string; body?: string } | undefined
-  > {
-    return this.getAllFlags().pipe(
-      map((flags) => {
-        const warningTitle: string | undefined = flags[
-          'WARNING_TEXT_HEADER'
-        ] as string | undefined;
-        const warningBody: string | undefined = flags['WARNING_TEXT_BODY'] as
-          | string
-          | undefined;
-        if (warningTitle || warningBody) {
-          return {
-            title: warningTitle,
-            body: warningBody,
-          };
-        }
-        return undefined;
+        return !value[ApFlagId.USER_CREATED];
       })
     );
   }
@@ -57,7 +72,7 @@ export class FlagService {
     return this.getAllFlags().pipe(
       map((flags) => {
         const firstUser = flags['USER_CREATED'] as boolean;
-        if (!firstUser) {
+        if (!firstUser && flags['EDITION'] !== ApEdition.CLOUD) {
           return true;
         }
         return flags['SIGN_UP_ENABLED'] as boolean;
@@ -73,10 +88,37 @@ export class FlagService {
     );
   }
 
+  isVersionMatch(): Observable<boolean> {
+    return this.getAllFlags().pipe(
+      map((flags) => {
+        return gt(
+          flags[ApFlagId.LATEST_VERSION] as string,
+          flags[ApFlagId.CURRENT_VERSION] as string
+        );
+      })
+    );
+  }
+
   getWebhookUrlPrefix(): Observable<string> {
     return this.getAllFlags().pipe(
       map((flags) => {
         return flags[ApFlagId.WEBHOOK_URL_PREFIX] as string;
+      })
+    );
+  }
+
+  getFormUrlPrefix(): Observable<string> {
+    return this.getAllFlags().pipe(
+      map((flags) => {
+        return (flags[ApFlagId.FRONTEND_URL] as string) + '/forms';
+      })
+    );
+  }
+
+  isFlagEnabled(flag: ApFlagId): Observable<boolean> {
+    return this.getAllFlags().pipe(
+      map((value) => {
+        return value[flag] === true;
       })
     );
   }
@@ -113,11 +155,55 @@ export class FlagService {
     );
   }
 
+  getRedirectUrl(): Observable<string> {
+    return this.getAllFlags().pipe(
+      map((flags) => {
+        return flags[ApFlagId.THIRD_PARTY_AUTH_PROVIDER_REDIRECT_URL] as string;
+      })
+    );
+  }
+
   getFrontendUrl(): Observable<string> {
     return this.getAllFlags().pipe(
       map((flags) => {
         return flags[ApFlagId.FRONTEND_URL] as string;
       })
+    );
+  }
+
+  getTheme() {
+    return this.getAllFlags().pipe(
+      map((flags) => {
+        return flags[ApFlagId.THEME] as Record<string, any>;
+      })
+    );
+  }
+
+  getWebsiteName() {
+    return this.getTheme().pipe(map((theme) => theme['websiteName']));
+  }
+
+  getLogos(): Observable<{
+    fullLogoUrl: string;
+    favIconUrl: string;
+    logoIconUrl: string;
+  }> {
+    return this.getTheme().pipe(map((theme) => theme['logos']));
+  }
+  /**Colors like formlabel, borders,dividers ... etc */
+  getColors(): Observable<Record<string, string | Record<string, string>>> {
+    return this.getTheme().pipe(map((theme) => theme['colors']));
+  }
+  getWarnPalette(): Observable<
+    Record<string, string | Record<string, string>>
+  > {
+    return this.getTheme().pipe(map((theme) => theme['materialWarnPalette']));
+  }
+  getPrimaryPalette(): Observable<
+    Record<string, string | Record<string, string>>
+  > {
+    return this.getTheme().pipe(
+      map((theme) => theme['materialPrimaryPalette'])
     );
   }
 }

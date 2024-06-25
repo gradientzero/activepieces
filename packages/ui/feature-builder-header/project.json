@@ -4,9 +4,10 @@
   "projectType": "library",
   "sourceRoot": "packages/ui/feature-builder-header/src",
   "prefix": "app",
+  "implicitDependencies": ["ee-components"],
   "targets": {
     "build": {
-      "executor": "@nrwl/angular:ng-packagr-lite",
+      "executor": "@nx/angular:ng-packagr-lite",
       "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
       "options": {
         "project": "packages/ui/feature-builder-header/ng-package.json"
@@ -30,14 +31,8 @@
       }
     },
     "lint": {
-      "executor": "@nrwl/linter:eslint",
-      "outputs": ["{options.outputFile}"],
-      "options": {
-        "lintFilePatterns": [
-          "packages/ui/feature-builder-header/**/*.ts",
-          "packages/ui/feature-builder-header/**/*.html"
-        ]
-      }
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"]
     }
   },
   "tags": []

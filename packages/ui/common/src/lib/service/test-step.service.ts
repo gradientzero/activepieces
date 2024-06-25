@@ -1,8 +1,17 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Subject } from 'rxjs';
-import { SeekPage, TriggerEvent } from '@activepieces/shared';
+import { BehaviorSubject, Subject, filter, take } from 'rxjs';
+import {
+  StepRunResponse,
+  SeekPage,
+  TriggerEvent,
+  CreateStepRunRequestBody,
+  apId,
+  WebsocketClientEvent,
+  WebsocketServerEvent,
+} from '@activepieces/shared';
 import { environment } from '../environments/environment';
+import { WebSocketService } from './websocket.service';
 
 @Injectable({
   providedIn: 'root',
@@ -12,7 +21,10 @@ export class TestStepService {
   testingStepSectionIsRendered$: BehaviorSubject<boolean> = new BehaviorSubject(
     false
   );
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private websocketService: WebSocketService
+  ) {}
   getTriggerEventsResults(flowId: string) {
     return this.http.get<SeekPage<TriggerEvent>>(
       environment.apiUrl + '/trigger-events',
@@ -21,6 +33,12 @@ export class TestStepService {
           flowId: flowId,
         },
       }
+    );
+  }
+  savePieceWebhookTriggerMockdata(flowId: string, mockData: unknown) {
+    return this.http.post<TriggerEvent>(
+      environment.apiUrl + '/trigger-events?flowId=' + flowId,
+      mockData
     );
   }
   getPollingResults(flowId: string) {
@@ -33,12 +51,22 @@ export class TestStepService {
       }
     );
   }
-  testPieceStep(req: { stepName: string; flowVersionId: string }) {
-    return this.http.post<{ output: unknown; success: boolean }>(
-      environment.apiUrl + '/step-run',
-      req
-    );
+  testPieceOrCodeStep(req: Omit<CreateStepRunRequestBody, 'id'>) {
+    const id = apId();
+    this.websocketService.socket.emit(WebsocketServerEvent.TEST_STEP_RUN, {
+      ...req,
+      id,
+    });
+    return this.websocketService.socket
+      .fromEvent<StepRunResponse>(WebsocketClientEvent.TEST_STEP_FINISHED)
+      .pipe(
+        filter((response) => {
+          return response.id === id;
+        }),
+        take(1)
+      );
   }
+
   startPieceWebhookSimulation(flowId: string) {
     return this.http.post<SeekPage<TriggerEvent>>(
       environment.apiUrl + '/webhook-simulation/',

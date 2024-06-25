@@ -1,21 +1,56 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthenticationService } from '../../service/authentication.service';
-import { showBeamer } from '../../utils/beamer';
-
+import { ApFlagId } from '@activepieces/shared';
+import { Observable } from 'rxjs';
+import { FlagService } from '../../service/flag.service';
+import { LocalesService } from '../../service/locales.service';
+import { LocalesEnum } from '@activepieces/shared';
+import { localesMap } from '../../utils/locales';
+import { showPlatformDashboard$ } from '../../utils/consts';
+import { TelemetryService } from '../../service';
 @Component({
   selector: 'ap-user-avatar',
   templateUrl: './user-avatar.component.html',
   styleUrls: ['./user-avatar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class UserAvatarComponent {
+export class UserAvatarComponent implements OnInit {
   showAvatarOuterCircle = false;
+  currentUserEmail = '';
+  overflownProjectsNames: Record<string, string> = {};
+  billingEnabled$: Observable<boolean>;
+  showPlatform$: Observable<boolean>;
+  showCommunity$: Observable<boolean>;
+  locales = localesMap;
+  selectedLanguage = {
+    languageName: localesMap[LocalesEnum.ENGLISH],
+    locale: LocalesEnum.ENGLISH,
+  };
 
   constructor(
     public authenticationService: AuthenticationService,
-    private router: Router
-  ) {}
+    private router: Router,
+    private flagService: FlagService,
+    private telemetryService: TelemetryService,
+    private localesService: LocalesService
+  ) {
+    this.showCommunity$ = this.flagService.isFlagEnabled(
+      ApFlagId.SHOW_COMMUNITY
+    );
+    this.billingEnabled$ = this.flagService.isFlagEnabled(
+      ApFlagId.SHOW_BILLING
+    );
+    this.selectedLanguage =
+      this.localesService.getCurrentLanguageFromLocalStorageOrDefault();
+    this.showPlatform$ = showPlatformDashboard$(
+      this.authenticationService,
+      this.flagService
+    );
+  }
+  ngOnInit(): void {
+    this.currentUserEmail = this.authenticationService.currentUser.email;
+  }
 
   getDropDownLeftOffset(
     toggleElement: HTMLElement,
@@ -27,8 +62,12 @@ export class UserAvatarComponent {
   }
 
   logout() {
-    this.router.navigate(['sign-in']);
+    this.telemetryService.reset();
     this.authenticationService.logout();
+  }
+
+  viewPlans() {
+    this.router.navigate(['plans']);
   }
 
   get userFirstLetter() {
@@ -41,9 +80,18 @@ export class UserAvatarComponent {
     return this.authenticationService.currentUser.firstName[0];
   }
   goToCommunity() {
-    window.open('https://discord.gg/GHgqTAJy', '_blank');
+    window.open('https://community.activepieces.com/', '_blank', 'noopener');
   }
+
   showWhatIsNew() {
-    showBeamer();
+    window.open(
+      'https://community.activepieces.com/c/announcements',
+      '_blank',
+      'noopener'
+    );
+  }
+  redirectToLocale(locale: LocalesEnum) {
+    this.localesService.setCurrentLocale(locale);
+    this.localesService.redirectToLocale(locale);
   }
 }
