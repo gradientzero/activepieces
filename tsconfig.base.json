@@ -149,6 +149,9 @@
       "@activepieces/piece-dropbox": [
         "packages/pieces/community/dropbox/src/index.ts"
       ],
+      "@activepieces/piece-ecomon": [
+        "packages/pieces/community/ecomon/src/index.ts"
+      ],
       "@activepieces/piece-elevenlabs": [
         "packages/pieces/community/elevenlabs/src/index.ts"
       ],
@@ -157,6 +160,9 @@
       ],
       "@activepieces/piece-facebook-pages": [
         "packages/pieces/community/facebook-pages/src/index.ts"
+      ],
+      "@activepieces/piece-fiesda": [
+        "packages/pieces/community/fiesda/src/index.ts"
       ],
       "@activepieces/piece-figma": [
         "packages/pieces/community/figma/src/index.ts"
