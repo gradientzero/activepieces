@@ -1,0 +1,38 @@
+{
+  "name": "pieces-fiesda-new",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/pieces/community/fiesda-new/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "dist/packages/pieces/community/fiesda-new",
+        "tsConfig": "packages/pieces/community/fiesda-new/tsconfig.lib.json",
+        "packageJson": "packages/pieces/community/fiesda-new/package.json",
+        "main": "packages/pieces/community/fiesda-new/src/index.ts",
+        "assets": [
+          "packages/pieces/community/fiesda-new/*.md"
+        ],
+        "buildableProjectDepsInPackageJsonType": "dependencies",
+        "updateBuildableProjectDepsInPackageJson": true
+      }
+    },
+    "publish": {
+      "command": "node tools/scripts/publish.mjs pieces-fiesda-new {args.ver} {args.tag}",
+      "dependsOn": [
+        "build"
+      ]
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": [
+        "{options.outputFile}"
+      ]
+    }
+  },
+  "tags": []
+}
