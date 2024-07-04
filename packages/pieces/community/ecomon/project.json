@@ -1,0 +1,38 @@
+{
+  "name": "pieces-ecomon",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/pieces/community/ecomon/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "dist/packages/pieces/community/ecomon",
+        "tsConfig": "packages/pieces/community/ecomon/tsconfig.lib.json",
+        "packageJson": "packages/pieces/community/ecomon/package.json",
+        "main": "packages/pieces/community/ecomon/src/index.ts",
+        "assets": [
+          "packages/pieces/community/ecomon/*.md"
+        ],
+        "buildableProjectDepsInPackageJsonType": "dependencies",
+        "updateBuildableProjectDepsInPackageJson": true
+      }
+    },
+    "publish": {
+      "command": "node tools/scripts/publish.mjs pieces-ecomon {args.ver} {args.tag}",
+      "dependsOn": [
+        "build"
+      ]
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": [
+        "{options.outputFile}"
+      ]
+    }
+  },
+  "tags": []
+}
