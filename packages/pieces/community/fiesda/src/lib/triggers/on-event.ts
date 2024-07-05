@@ -20,7 +20,8 @@ export const newOnEventTrigger = createTrigger({
     enabled: true,
     organizationUuid: '879d7307-b1df-4945-a219-7f3ea3495364',
     webhookUrl:
-      'http://localhost:8050/api/organizations/879d7307-b1df-4945-a219-7f3ea3495364/webhooks',
+      // 'http://localhost:8050/api/organizations/879d7307-b1df-4945-a219-7f3ea3495364/webhooks',
+      'http://127.0.0.1:8090/admin/tenants/e7b828ac-eb9d-4d30-87c1-59fd9c0df047/webhooks',
     eventType: 'OrganizationAddedEvent',
   },
   auth: authProp,

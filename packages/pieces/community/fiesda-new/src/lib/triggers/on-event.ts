@@ -1,6 +1,6 @@
 import { TriggerStrategy, createTrigger } from '@activepieces/pieces-framework';
 import { authProp } from '../common/auth';
-import { organizationProp } from '../common/organization';
+// import { organizationProp } from '../common/organization';
 import { fiesdaEventTypeProp, manageEventTypeProp } from '../common/event';
 import { newUuid } from '../common/uuid';
 import {
@@ -20,14 +20,15 @@ export const newOnEventTrigger = createTrigger({
     enabled: true,
     organizationUuid: '879d7307-b1df-4945-a219-7f3ea3495364',
     webhookUrl:
-      'http://localhost:8050/api/organizations/879d7307-b1df-4945-a219-7f3ea3495364/webhooks',
+      // 'http://localhost:8050/api/organizations/879d7307-b1df-4945-a219-7f3ea3495364/webhooks',
+      'http://127.0.0.1:8090/admin/tenants/e7b828ac-eb9d-4d30-87c1-59fd9c0df047/webhooks',
     eventType: 'OrganizationAddedEvent',
   },
   auth: authProp,
   props: {
     manageBaseUrl: manageBaseUrlProp,
     fiesdaBaseUrl: fiesdaBaseUrlProp,
-    organizationUuid: organizationProp,
+    // organizationUuid: organizationProp,
     manageEventType: manageEventTypeProp,
     fiesdaEventType: fiesdaEventTypeProp,
   },
@@ -36,13 +37,15 @@ export const newOnEventTrigger = createTrigger({
     const newAggregateUuid = newUuid();
     const manageBaseUrl = context.propsValue.manageBaseUrl;
     const fiesdaBaseUrl = context.propsValue.fiesdaBaseUrl;
-    const organizationUuid = context.propsValue.organizationUuid;
+    // const organizationUuid = context.propsValue.organizationUuid;
     const manageEventType = context.propsValue.manageEventType ?? undefined;
     const fiesdaEventType = context.propsValue.fiesdaEventType ?? undefined;
     const baseUrl = manageEventType ? manageBaseUrl : fiesdaBaseUrl;
-    const serviceUrl = `${baseUrl}/api/organizations/${organizationUuid}/webhooks`;
+    // const serviceUrl = `${baseUrl}/api/organizations/${organizationUuid}/webhooks`;
+    const serviceUrl =
+      'http://127.0.0.1:8090/admin/tenants/e7b828ac-eb9d-4d30-87c1-59fd9c0df047/webhooks';
     const eventType = manageEventType ? manageEventType : fiesdaEventType;
-    const valid = organizationUuid && eventType && baseUrl;
+    const valid = eventType && baseUrl;
     if (valid) {
       const bearerToken = `sa=${context.auth}`;
       const params: SubscribeWebhookParams = {
@@ -56,7 +59,7 @@ export const newOnEventTrigger = createTrigger({
       if (success) {
         await context.store?.put<TriggerData>(STORE_KEY, {
           service: manageEventType ? 'manage' : 'fiesda',
-          organizationUuid: organizationUuid,
+          // organizationUuid: organizationUuid,
           aggregateUuid: newAggregateUuid,
         });
       }
@@ -65,12 +68,14 @@ export const newOnEventTrigger = createTrigger({
   onDisable: async (context) => {
     const storeData = await context.store?.get<TriggerData>(STORE_KEY);
     if (storeData) {
-      const baseUrl =
-        storeData.service === 'manage'
-          ? context.propsValue.manageBaseUrl
-          : context.propsValue.fiesdaBaseUrl;
-      const organizationUuid = storeData.organizationUuid;
-      const serviceUrl = `${baseUrl}/api/organizations/${organizationUuid}/webhooks/${storeData.aggregateUuid}`;
+      // const baseUrl =
+      //   storeData.service === 'manage'
+      //     ? context.propsValue.manageBaseUrl
+      //     : context.propsValue.fiesdaBaseUrl;
+      // const organizationUuid = storeData.organizationUuid;
+      // const serviceUrl = `${baseUrl}/api/organizations/${organizationUuid}/webhooks/${storeData.aggregateUuid}`;
+      const serviceUrl =
+        'http://127.0.0.1:8090/admin/tenants/e7b828ac-eb9d-4d30-87c1-59fd9c0df047/webhooks';
       const bearerToken = `sa=${context.auth}`;
       const params: UnsubscribeWebhookParams = {
         serviceUrl: serviceUrl,
@@ -90,6 +95,6 @@ export const newOnEventTrigger = createTrigger({
 
 type TriggerData = {
   service: string;
-  organizationUuid: string;
+  // organizationUuid: string;
   aggregateUuid: string;
 };

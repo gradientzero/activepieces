@@ -7,7 +7,7 @@ import {
   httpClient,
 } from '@activepieces/pieces-common';
 import { fiesdaBaseUrlProp, manageBaseUrlProp } from '../common/baseUrl';
-import { organizationProp } from '../common/organization';
+// import { organizationProp } from '../common/organization';
 import { newUuid } from '../common/uuid';
 
 export const createCollection = createAction({
@@ -18,7 +18,7 @@ export const createCollection = createAction({
   props: {
     manageBaseUrl: manageBaseUrlProp,
     fiesdaBaseUrl: fiesdaBaseUrlProp,
-    organizationUuid: organizationProp,
+    // organizationUuid: organizationProp,
     label: Property.Number({
       displayName: 'Collection name',
       description: 'name of the new collection to create',
@@ -27,10 +27,11 @@ export const createCollection = createAction({
   },
   async run(context) {
     const personalToken = context.auth;
-    const { fiesdaBaseUrl, organizationUuid, label } = context.propsValue;
+    const { label } = context.propsValue;
     const request: HttpRequest = {
       method: HttpMethod.POST,
-      url: `${fiesdaBaseUrl}/api/organizations/${organizationUuid}/collections`,
+      // url: `${fiesdaBaseUrl}/api/organizations/${organizationUuid}/collections`,
+      url: 'http://127.0.0.1:8090/admin/tenants/e7b828ac-eb9d-4d30-87c1-59fd9c0df047/collections',
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
