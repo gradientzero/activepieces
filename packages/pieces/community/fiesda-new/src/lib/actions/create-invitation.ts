@@ -6,32 +6,30 @@ import {
   HttpRequest,
   httpClient,
 } from '@activepieces/pieces-common';
-import { fiesdaBaseUrlProp, manageBaseUrlProp } from '../common/baseUrl';
-// import { organizationProp } from '../common/organization';
+import { fiesdaBaseUrlProp } from '../common/baseUrl';
+import { tenantProp } from '../common/tenant';
 import { newUuid } from '../common/uuid';
 
-export const createCollection = createAction({
-  name: 'create_collection',
-  displayName: 'New collection',
-  description: 'Creates new collection',
+export const sendInvitation = createAction({
+  name: 'send_invitation',
+  displayName: 'Send invitation',
+  description: 'Send new invitation',
   auth: authProp,
   props: {
-    manageBaseUrl: manageBaseUrlProp,
     fiesdaBaseUrl: fiesdaBaseUrlProp,
-    // organizationUuid: organizationProp,
-    label: Property.Number({
-      displayName: 'Collection name',
-      description: 'name of the new collection to create',
+    tenantUuid: tenantProp,
+    label: Property.ShortText({
+      displayName: 'Email',
+      description: 'Email to invite',
       required: true,
     }),
   },
   async run(context) {
     const personalToken = context.auth;
-    const { label } = context.propsValue;
+    const { label, tenantUuid } = context.propsValue;
     const request: HttpRequest = {
       method: HttpMethod.POST,
-      // url: `${fiesdaBaseUrl}/api/organizations/${organizationUuid}/collections`,
-      url: 'http://127.0.0.1:8090/admin/tenants/e7b828ac-eb9d-4d30-87c1-59fd9c0df047/collections',
+      url: `http://127.0.0.1:8090/api/tenants/${tenantUuid}/invitations`,
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',

@@ -1,100 +1,56 @@
-import { TriggerStrategy, createTrigger } from '@activepieces/pieces-framework';
+import { Property, TriggerStrategy, createTrigger } from '@activepieces/pieces-framework';
 import { authProp } from '../common/auth';
 // import { organizationProp } from '../common/organization';
-import { fiesdaEventTypeProp, manageEventTypeProp } from '../common/event';
-import { newUuid } from '../common/uuid';
-import {
-  SubscribeWebhookParams,
-  UnsubscribeWebhookParams,
-  subscribeWebhook,
-  unsubscribeWebhook,
-} from '../common/webhook';
-import { fiesdaBaseUrlProp, manageBaseUrlProp } from '../common/baseUrl';
+// import { fiesdaEventTypeProp, manageEventTypeProp } from '../common/event';
+// import { newUuid } from '../common/uuid';
+// import {
+//   SubscribeWebhookParams,
+//   UnsubscribeWebhookParams,
+//   subscribeWebhook,
+//   unsubscribeWebhook,
+// } from '../common/webhook';
+// import { fiesdaBaseUrlProp, manageBaseUrlProp } from '../common/baseUrl';
 
-const STORE_KEY = '_new_event_trigger';
+const message = `
+
+**Production URL:**
+\`\`\`text
+{{webhookUrl}}
+\`\`\`
+
+**Testing URL:**
+\`\`\`text
+{{webhookUrl}}/test
+\`\`\`
+***Use this URL for testing the webhook and saving sample data. It won't start the flow***.
+
+**Notes:**
+- If you are expecting a reply from this webhook, append **/sync** to the URL in that case, you will also have to add an HTTP step with **return response** at the end of your flow.
+- If the flow takes more than **30 seconds**, it will give a **408 Request Timeout** response.
+`;
+
+
+// const STORE_KEY = '_new_event_trigger';
 export const newOnEventTrigger = createTrigger({
   name: 'new_on_event_trigger',
   displayName: 'New Events Trigger',
   description: 'Triggers when new Events were created',
-  sampleData: {
-    enabled: true,
-    organizationUuid: '879d7307-b1df-4945-a219-7f3ea3495364',
-    webhookUrl:
-      // 'http://localhost:8050/api/organizations/879d7307-b1df-4945-a219-7f3ea3495364/webhooks',
-      'http://127.0.0.1:8090/admin/tenants/e7b828ac-eb9d-4d30-87c1-59fd9c0df047/webhooks',
-    eventType: 'OrganizationAddedEvent',
-  },
+  sampleData: null,
   auth: authProp,
   props: {
-    manageBaseUrl: manageBaseUrlProp,
-    fiesdaBaseUrl: fiesdaBaseUrlProp,
-    // organizationUuid: organizationProp,
-    manageEventType: manageEventTypeProp,
-    fiesdaEventType: fiesdaEventTypeProp,
+    markdown: Property.MarkDown({
+      value: message,
+    }),
   },
   type: TriggerStrategy.WEBHOOK,
-  onEnable: async (context) => {
-    const newAggregateUuid = newUuid();
-    const manageBaseUrl = context.propsValue.manageBaseUrl;
-    const fiesdaBaseUrl = context.propsValue.fiesdaBaseUrl;
-    // const organizationUuid = context.propsValue.organizationUuid;
-    const manageEventType = context.propsValue.manageEventType ?? undefined;
-    const fiesdaEventType = context.propsValue.fiesdaEventType ?? undefined;
-    const baseUrl = manageEventType ? manageBaseUrl : fiesdaBaseUrl;
-    // const serviceUrl = `${baseUrl}/api/organizations/${organizationUuid}/webhooks`;
-    const serviceUrl =
-      'http://127.0.0.1:8090/admin/tenants/e7b828ac-eb9d-4d30-87c1-59fd9c0df047/webhooks';
-    const eventType = manageEventType ? manageEventType : fiesdaEventType;
-    const valid = eventType && baseUrl;
-    if (valid) {
-      const bearerToken = `sa=${context.auth}`;
-      const params: SubscribeWebhookParams = {
-        newAggregateUuid: newAggregateUuid,
-        serviceUrl: serviceUrl,
-        webhookUrl: context.webhookUrl,
-        eventType: eventType,
-        bearerToken: bearerToken,
-      };
-      const { success } = await subscribeWebhook(params);
-      if (success) {
-        await context.store?.put<TriggerData>(STORE_KEY, {
-          service: manageEventType ? 'manage' : 'fiesda',
-          // organizationUuid: organizationUuid,
-          aggregateUuid: newAggregateUuid,
-        });
-      }
-    }
+  onEnable: async () => {
+    // ignore
   },
-  onDisable: async (context) => {
-    const storeData = await context.store?.get<TriggerData>(STORE_KEY);
-    if (storeData) {
-      // const baseUrl =
-      //   storeData.service === 'manage'
-      //     ? context.propsValue.manageBaseUrl
-      //     : context.propsValue.fiesdaBaseUrl;
-      // const organizationUuid = storeData.organizationUuid;
-      // const serviceUrl = `${baseUrl}/api/organizations/${organizationUuid}/webhooks/${storeData.aggregateUuid}`;
-      const serviceUrl =
-        'http://127.0.0.1:8090/admin/tenants/e7b828ac-eb9d-4d30-87c1-59fd9c0df047/webhooks';
-      const bearerToken = `sa=${context.auth}`;
-      const params: UnsubscribeWebhookParams = {
-        serviceUrl: serviceUrl,
-        bearerToken: bearerToken,
-      };
-      await unsubscribeWebhook(params);
-      await context.store?.delete(STORE_KEY);
-    }
+  onDisable: async () => {
+    // ignore
   },
-  run: async (context: any) => {
-    if ('item' in context.payload.body) {
-      return [context.payload.body.item];
-    }
-    return [];
+  run: async (context) => {
+    return [context.payload]
   },
 });
 
-type TriggerData = {
-  service: string;
-  // organizationUuid: string;
-  aggregateUuid: string;
-};
