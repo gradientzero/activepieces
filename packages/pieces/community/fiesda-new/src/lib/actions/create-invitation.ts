@@ -6,8 +6,7 @@ import {
   HttpRequest,
   httpClient,
 } from '@activepieces/pieces-common';
-import { fiesdaBaseUrlProp } from '../common/baseUrl';
-import { tenantProp } from '../common/tenant';
+import { fiesdaCommon } from '../common';
 import { newUuid } from '../common/uuid';
 
 export const sendInvitation = createAction({
@@ -16,39 +15,40 @@ export const sendInvitation = createAction({
   description: 'Send new invitation',
   auth: authProp,
   props: {
-    fiesdaBaseUrl: fiesdaBaseUrlProp,
-    tenantUuid: tenantProp,
-    label: Property.ShortText({
+    fiesdaBaseUrl: fiesdaCommon.fiesdaBaseUrl,
+    tenantUuid: fiesdaCommon.tenantUuid,
+    groupUuid: fiesdaCommon.groupUuid,
+    identityUuid: fiesdaCommon.identityUuid,
+    email: Property.ShortText({
       displayName: 'Email',
       description: 'Email to invite',
       required: true,
     }),
   },
   async run(context) {
-    const personalToken = context.auth;
-    const { label, tenantUuid } = context.propsValue;
+    const { fiesdaBaseUrl, email, tenantUuid, groupUuid, identityUuid } = context.propsValue;
     const request: HttpRequest = {
       method: HttpMethod.POST,
-      url: `http://127.0.0.1:8090/api/tenants/${tenantUuid}/invitations`,
+      url: `${fiesdaBaseUrl}/api/tenants/${tenantUuid}/invitations`,
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
       authentication: {
         type: AuthenticationType.BEARER_TOKEN,
-        token: personalToken,
+        token: `sa=${context.auth}`
       },
       queryParams: {},
       body: {
-        aggregateUuid: newUuid(),
-        label: label,
+        email,
+        groupUuids: [groupUuid],
+        identityUuid,
+        invitationUuid: newUuid()
       },
     };
-    const response = await httpClient.sendRequest(request);
+    await httpClient.sendRequest(request);
     return {
       success: true,
-      request_body: request.body,
-      response_body: response.body,
     };
   },
 });

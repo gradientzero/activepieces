@@ -1,15 +1,5 @@
 import { Property, TriggerStrategy, createTrigger } from '@activepieces/pieces-framework';
 import { authProp } from '../common/auth';
-// import { organizationProp } from '../common/organization';
-// import { fiesdaEventTypeProp, manageEventTypeProp } from '../common/event';
-// import { newUuid } from '../common/uuid';
-// import {
-//   SubscribeWebhookParams,
-//   UnsubscribeWebhookParams,
-//   subscribeWebhook,
-//   unsubscribeWebhook,
-// } from '../common/webhook';
-// import { fiesdaBaseUrlProp, manageBaseUrlProp } from '../common/baseUrl';
 
 const message = `
 
