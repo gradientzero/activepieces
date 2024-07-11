@@ -164,6 +164,9 @@
       "@activepieces/piece-fiesda": [
         "packages/pieces/community/fiesda/src/index.ts"
       ],
+      "@activepieces/piece-fiesda-new": [
+        "packages/pieces/community/fiesda-new/src/index.ts"
+      ],
       "@activepieces/piece-figma": [
         "packages/pieces/community/figma/src/index.ts"
       ],
@@ -358,6 +361,9 @@
       ],
       "@activepieces/piece-mysql": [
         "packages/pieces/community/mysql/src/index.ts"
+      ],
+      "@activepieces/piece-new-fiesda": [
+        "packages/pieces/community/new-fiesda/src/index.ts"
       ],
       "@activepieces/piece-nifty": [
         "packages/pieces/community/nifty/src/index.ts"
