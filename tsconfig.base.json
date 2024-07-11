@@ -152,6 +152,9 @@
       "@activepieces/piece-ecomon": [
         "packages/pieces/community/ecomon/src/index.ts"
       ],
+      "@activepieces/piece-ecomon-new": [
+        "packages/pieces/community/ecomon-new/src/index.ts"
+      ],
       "@activepieces/piece-elevenlabs": [
         "packages/pieces/community/elevenlabs/src/index.ts"
       ],
