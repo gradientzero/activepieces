@@ -1,21 +1,25 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { NewFolderDialogComponent } from '../new-folder-dialog/new-folder-dialog.component';
-import { Observable, tap, map, switchMap, take } from 'rxjs';
+
+import { Observable, tap, map, switchMap, take, BehaviorSubject } from 'rxjs';
 import { FolderDto } from '@activepieces/shared';
 import { Store } from '@ngrx/store';
-import { FoldersSelectors } from '../../../store/folders/folders.selector';
-import { FolderActions } from '../../../store/folders/folders.actions';
-import { ActivatedRoute, Router } from '@angular/router';
+import {
+  FolderActions,
+  FoldersSelectors,
+} from '@activepieces/ui/feature-folders-store';
+import { ActivatedRoute } from '@angular/router';
 import {
   DeleteEntityDialogComponent,
   DeleteEntityDialogData,
   FoldersService,
+  NavigationService,
 } from '@activepieces/ui/common';
+import { NewFolderDialogComponent } from '../../../components/dialogs/new-folder-dialog/new-folder-dialog.component';
 import {
   RenameFolderDialogComponent,
   RenameFolderDialogData,
-} from '../rename-folder-dialog/rename-folder-dialog.component';
+} from '../../../components/dialogs/rename-folder-dialog/rename-folder-dialog.component';
 
 @Component({
   selector: 'app-folders-list',
@@ -24,6 +28,9 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FoldersListComponent {
+  sortFolders$: BehaviorSubject<'asc' | 'desc'> = new BehaviorSubject<
+    'asc' | 'desc'
+  >('asc');
   allFlowsNumber$: Observable<number>;
   uncategorizedFlowsNumber$: Observable<number>;
   folders$: Observable<FolderDto[]>;
@@ -34,11 +41,19 @@ export class FoldersListComponent {
   constructor(
     private dialogService: MatDialog,
     private store: Store,
-    private router: Router,
+    private navigationService: NavigationService,
     private route: ActivatedRoute,
     private folderService: FoldersService
   ) {
-    this.folders$ = this.store.select(FoldersSelectors.selectFolders);
+    this.folders$ = this.sortFolders$.pipe(
+      switchMap((res) => {
+        if (res === 'asc') {
+          return this.store.select(FoldersSelectors.selectFoldersAsc);
+        } else {
+          return this.store.select(FoldersSelectors.selectFoldersDesc);
+        }
+      })
+    );
     this.allFlowsNumber$ = this.store.select(
       FoldersSelectors.selectAllFlowsNumber
     );
@@ -75,10 +90,13 @@ export class FoldersListComponent {
   }
 
   clearCursorParam(folderId?: string) {
-    this.router.navigate(['.'], {
-      relativeTo: this.route,
-      queryParams: { cursor: undefined, folderId: folderId },
-      queryParamsHandling: 'merge',
+    this.navigationService.navigate({
+      route: ['.'],
+      extras: {
+        relativeTo: this.route,
+        queryParams: { cursor: undefined, folderId: folderId },
+        queryParamsHandling: 'merge',
+      },
     });
   }
   deleteFolder(folder: FolderDto) {
@@ -115,5 +133,20 @@ export class FoldersListComponent {
   scrollToFolder(folderId: string) {
     const folderDiv = document.getElementById(folderId);
     folderDiv?.scrollIntoView({ behavior: 'smooth' });
+  }
+  toggleFolderSorting() {
+    if (this.sortFolders$.value === 'desc') {
+      this.sortFolders$.next('asc');
+    } else {
+      this.sortFolders$.next('desc');
+    }
+  }
+
+  getSortFoldersTooltipText() {
+    if (this.sortFolders$.value === 'asc') {
+      return $localize`Ascending`;
+    }
+
+    return $localize`Descending`;
   }
 }

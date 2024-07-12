@@ -1,14 +1,38 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { map, Observable, shareReplay, startWith, Subject, tap } from 'rxjs';
+import { Component, Inject, LOCALE_ID, OnInit, ViewChild } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import {
+  map,
+  Observable,
+  of,
+  shareReplay,
+  startWith,
+  Subject,
+  switchMap,
+  tap,
+} from 'rxjs';
 import { FlowsTableDataSource } from './flows-table.datasource';
 import { MatDialog } from '@angular/material/dialog';
-import { Flow, FlowInstanceStatus } from '@activepieces/shared';
-
+import {
+  PopulatedFlow,
+  FlowStatus,
+  FolderId,
+  FlowOperationType,
+  TelemetryEventName,
+  ApFlagId,
+  isNil,
+} from '@activepieces/shared';
 import {
   ApPaginatorComponent,
-  FlowInstanceService,
+  AuthenticationService,
+  EmbeddingService,
+  FlagService,
   FoldersService,
+  NavigationService,
+  TelemetryService,
+  downloadFlow,
+  flowActionsUiInfo,
+  flowDeleteNote,
+  flowDeleteNoteWithGit,
 } from '@activepieces/ui/common';
 import { FlowService } from '@activepieces/ui/common';
 import { ARE_THERE_FLOWS_FLAG } from '../../resolvers/are-there-flows.resolver';
@@ -18,12 +42,19 @@ import {
 } from '@activepieces/ui/common';
 import { FormControl } from '@angular/forms';
 import { Store } from '@ngrx/store';
-import { FolderActions } from '../../store/folders/folders.actions';
 import {
+  FolderActions,
+  FoldersSelectors,
   MoveFlowToFolderDialogComponent,
   MoveFlowToFolderDialogData,
-} from './move-flow-to-folder-dialog/move-flow-to-folder-dialog.component';
-import { FoldersSelectors } from '../../store/folders/folders.selector';
+} from '@activepieces/ui/feature-folders-store';
+import {
+  RenameFlowDialogComponent,
+  RenameFlowDialogData,
+} from '../../components/dialogs/rename-flow-dialog/rename-flow-dialog.component';
+import { RewardsDialogComponent } from '../../components/dialogs/rewards-dialog/rewards-dialog.component';
+import { SyncProjectService } from '@activepieces/ui-feature-git-sync';
+import { GitBranchType, GitPushOperationType } from '@activepieces/ee-shared';
 
 @Component({
   templateUrl: './flows-table.component.html',
@@ -31,10 +62,12 @@ import { FoldersSelectors } from '../../store/folders/folders.selector';
 export class FlowsTableComponent implements OnInit {
   @ViewChild(ApPaginatorComponent, { static: true })
   paginator!: ApPaginatorComponent;
+  readonly flowActionsUiInfo = flowActionsUiInfo;
   creatingFlow = false;
   deleteFlowDialogClosed$: Observable<void>;
   moveFlowDialogClosed$: Observable<void>;
   dataSource!: FlowsTableDataSource;
+  folderId$: Observable<FolderId | undefined>;
   displayedColumns = [
     'name',
     'steps',
@@ -44,41 +77,57 @@ export class FlowsTableComponent implements OnInit {
     'action',
   ];
   refreshTableAtCurrentCursor$: Subject<boolean> = new Subject();
-  areThereFlows$: Observable<boolean>;
+  areThereFlows$?: Observable<boolean>;
   flowsUpdateStatusRequest$: Record<string, Observable<void> | null> = {};
   showAllFlows$: Observable<boolean>;
-  duplicateFlow$: Observable<void>;
-
+  duplicateFlow$?: Observable<void>;
+  downloadTemplate$?: Observable<void>;
+  renameFlow$?: Observable<boolean>;
+  hideFolders$ = this.embeddingService.getHideFolders$();
+  showRewards$: Observable<boolean>;
+  deleteFlowFromGit$?: Observable<void>;
   constructor(
     private activatedRoute: ActivatedRoute,
     private dialogService: MatDialog,
     private flowService: FlowService,
     private foldersService: FoldersService,
-    private router: Router,
-    private instanceService: FlowInstanceService,
-    private store: Store
+    private store: Store,
+    private authenticationService: AuthenticationService,
+    private navigationService: NavigationService,
+    private embeddingService: EmbeddingService,
+    private telemetryService: TelemetryService,
+    private flagService: FlagService,
+    private syncProjectService: SyncProjectService,
+    @Inject(LOCALE_ID) public locale: string
   ) {
-    this.listenToShowAllFolders();
+    this.showAllFlows$ = this.listenToShowAllFolders();
+    this.folderId$ = this.store.select(FoldersSelectors.selectCurrentFolderId);
+    this.showRewards$ = this.flagService.isFlagEnabled(ApFlagId.SHOW_REWARDS);
   }
 
   private listenToShowAllFolders() {
-    this.showAllFlows$ = this.store
-      .select(FoldersSelectors.selectDisplayAllFlows)
-      .pipe(
-        tap((displayAllFlows) => {
-          this.hideOrShowFolderColumn(displayAllFlows);
-        }),
-        shareReplay(1)
-      );
+    return this.store.select(FoldersSelectors.selectDisplayAllFlows).pipe(
+      switchMap((displayAllFlows) => {
+        return this.hideFolders$.pipe(
+          map((hideFoldersList) => {
+            return displayAllFlows && !hideFoldersList;
+          })
+        );
+      }),
+      tap((showFoldersColumn) => {
+        this.toggleFoldersColumn(showFoldersColumn);
+      }),
+      shareReplay(1)
+    );
   }
 
-  private hideOrShowFolderColumn(displayAllFlows: boolean) {
+  private toggleFoldersColumn(showFoldersColumn: boolean) {
     const folderColumnIndex = this.displayedColumns.findIndex(
       (c) => c === 'folderName'
     );
-    if (displayAllFlows && folderColumnIndex == -1) {
+    if (showFoldersColumn && folderColumnIndex == -1) {
       this.displayedColumns.splice(2, 0, 'folderName');
-    } else if (!displayAllFlows && folderColumnIndex !== -1) {
+    } else if (!showFoldersColumn && folderColumnIndex !== -1) {
       this.displayedColumns.splice(folderColumnIndex, 1);
     }
   }
@@ -88,6 +137,7 @@ export class FlowsTableComponent implements OnInit {
       this.activatedRoute.queryParams,
       this.foldersService,
       this.paginator,
+      this.authenticationService,
       this.flowService,
       this.refreshTableAtCurrentCursor$.asObservable().pipe(startWith(true)),
       this.store
@@ -99,23 +149,26 @@ export class FlowsTableComponent implements OnInit {
     );
   }
 
-  openBuilder(flow: Flow, event: MouseEvent) {
-    const link = '/flows/' + flow.id;
-    if (event.ctrlKey) {
-      // Open in new tab
-      window.open(link, '_blank');
-    } else {
-      // Open in the same tab
-      this.router.navigateByUrl(link);
-    }
+  openBuilder(flow: PopulatedFlow, event: MouseEvent) {
+    const route = ['/flows/' + flow.id];
+    const openInNewWindow =
+      event.ctrlKey || event.which == 2 || event.button == 4;
+    this.navigationService.navigate({
+      route,
+      openInNewWindow,
+    });
   }
 
-  deleteFlow(flow: Flow) {
+  deleteFlow(flow: PopulatedFlow) {
     const dialogData: DeleteEntityDialogData = {
       deleteEntity$: this.flowService.delete(flow.id),
       entityName: flow.version.displayName,
-      note: `This will permanently delete the flow, all its data and any background runs.
-      You can't undo this action.`,
+      note: '',
+      note$: this.syncProjectService.isDevelopment().pipe(
+        map((isDevelopment) => {
+          return isDevelopment ? flowDeleteNoteWithGit : flowDeleteNote;
+        })
+      ),
     };
     const dialogRef = this.dialogService.open(DeleteEntityDialogComponent, {
       data: dialogData,
@@ -123,6 +176,23 @@ export class FlowsTableComponent implements OnInit {
     this.deleteFlowDialogClosed$ = dialogRef.beforeClosed().pipe(
       tap((res) => {
         if (res) {
+          this.deleteFlowFromGit$ = this.syncProjectService.get().pipe(
+            switchMap((repo) => {
+              if (
+                isNil(repo) ||
+                repo.branchType !== GitBranchType.DEVELOPMENT
+              ) {
+                return of(undefined);
+              }
+              return this.syncProjectService.push(repo.id, {
+                type: GitPushOperationType.DELETE_FLOW,
+                flowId: flow.id,
+                commitMessage: `chore: deleted flow ${flow.version.displayName}`,
+              });
+            }),
+            map(() => void 0)
+          );
+
           this.refreshTableAtCurrentCursor$.next(true);
           this.store.dispatch(
             FolderActions.deleteFlow({
@@ -136,20 +206,23 @@ export class FlowsTableComponent implements OnInit {
       })
     );
   }
-  toggleFlowStatus(flow: Flow, control: FormControl<boolean>) {
+  toggleFlowStatus(flow: PopulatedFlow, control: FormControl<boolean>) {
     if (control.enabled) {
       control.disable();
-      this.flowsUpdateStatusRequest$[flow.id] = this.instanceService
-        .updateStatus(flow.id, {
-          status:
-            flow.status === FlowInstanceStatus.ENABLED
-              ? FlowInstanceStatus.DISABLED
-              : FlowInstanceStatus.ENABLED,
+      this.flowsUpdateStatusRequest$[flow.id] = this.flowService
+        .update(flow.id, {
+          type: FlowOperationType.CHANGE_STATUS,
+          request: {
+            status:
+              flow.status === FlowStatus.ENABLED
+                ? FlowStatus.DISABLED
+                : FlowStatus.ENABLED,
+          },
         })
         .pipe(
           tap((res) => {
             control.enable();
-            control.setValue(res.status === FlowInstanceStatus.ENABLED);
+            control.setValue(res.status === FlowStatus.ENABLED);
             this.flowsUpdateStatusRequest$[flow.id] = null;
             flow.status = res.status;
           }),
@@ -157,17 +230,28 @@ export class FlowsTableComponent implements OnInit {
         );
     }
   }
-  duplicate(flow: Flow) {
-    this.duplicateFlow$ = this.flowService.duplicate(flow);
+  duplicate(flow: PopulatedFlow) {
+    this.duplicateFlow$ = this.flowService.duplicate(flow.id);
   }
-
-  moveFlow(flow: Flow) {
-    const dialogData: MoveFlowToFolderDialogData = {
+  export(flow: PopulatedFlow) {
+    this.downloadTemplate$ = this.flowService
+      .exportTemplate(flow.id, undefined)
+      .pipe(
+        tap(downloadFlow),
+        map(() => {
+          return void 0;
+        })
+      );
+  }
+  moveFlow(flow: PopulatedFlow) {
+    const data: MoveFlowToFolderDialogData = {
       flowId: flow.id,
       folderId: flow.folderId,
+      flowDisplayName: flow.version.displayName,
+      inBuilder: false,
     };
     this.moveFlowDialogClosed$ = this.dialogService
-      .open(MoveFlowToFolderDialogComponent, { data: dialogData })
+      .open(MoveFlowToFolderDialogComponent, { data })
       .afterClosed()
       .pipe(
         tap((val: boolean) => {
@@ -177,5 +261,27 @@ export class FlowsTableComponent implements OnInit {
         }),
         map(() => void 0)
       );
+  }
+  renameFlow(flow: PopulatedFlow) {
+    const data: RenameFlowDialogData = { flow };
+    this.renameFlow$ = this.dialogService
+      .open(RenameFlowDialogComponent, { data })
+      .afterClosed()
+      .pipe(
+        tap((res) => {
+          if (res) {
+            this.refreshTableAtCurrentCursor$.next(true);
+          }
+        })
+      );
+  }
+  openRewardsDialog() {
+    this.dialogService.open(RewardsDialogComponent);
+    this.telemetryService.capture({
+      name: TelemetryEventName.REWARDS_OPENED,
+      payload: {
+        source: 'rewards-button',
+      },
+    });
   }
 }

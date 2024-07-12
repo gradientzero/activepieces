@@ -4,38 +4,39 @@ import {
   combineLatest,
   switchMap,
   tap,
-  map,
   catchError,
   of,
   take,
   BehaviorSubject,
+  forkJoin,
+  map,
+  merge,
 } from 'rxjs';
-import { AppConnection, FlowRun } from '@activepieces/shared';
+import { AppConnectionWithoutSensitiveData } from '@activepieces/shared';
 import {
   AppConnectionsService,
   ApPaginatorComponent,
-  ProjectSelectors,
   DEFAULT_PAGE_SIZE,
   LIMIT_QUERY_PARAM,
   CURSOR_QUERY_PARAM,
 } from '@activepieces/ui/common';
-import { Store } from '@ngrx/store';
 import { Params } from '@angular/router';
+import { PieceMetadataService } from '@activepieces/ui/feature-pieces';
 
 /**
  * Data source for the LogsTable view. This class should
  * encapsulate all logic for fetching and manipulating the displayed data
  * (including sorting, pagination, and filtering).
  */
-export class ConnectionsTableDataSource extends DataSource<FlowRun> {
-  data: AppConnection[] = [];
+export class ConnectionsTableDataSource extends DataSource<any> {
+  data: AppConnectionWithoutSensitiveData[] = [];
   isLoading$: BehaviorSubject<boolean> = new BehaviorSubject(true);
   constructor(
     private queryParams$: Observable<Params>,
     private paginator: ApPaginatorComponent,
-    private store: Store,
+    private pieceMetadataService: PieceMetadataService,
     private connectionsService: AppConnectionsService,
-    private refresh$: Observable<boolean>
+    private refreshForReruns$: Observable<boolean>
   ) {
     super();
   }
@@ -48,8 +49,10 @@ export class ConnectionsTableDataSource extends DataSource<FlowRun> {
   connect(): Observable<any[]> {
     return combineLatest({
       queryParams: this.queryParams$,
-      project: this.store.select(ProjectSelectors.selectProject).pipe(take(1)),
-      refresh: this.refresh$,
+      refresh: merge(
+        this.connectionsService.refreshCacheSubject,
+        this.refreshForReruns$
+      ),
     }).pipe(
       tap(() => {
         this.isLoading$.next(true);
@@ -58,6 +61,8 @@ export class ConnectionsTableDataSource extends DataSource<FlowRun> {
         return this.connectionsService.list({
           limit: res.queryParams[LIMIT_QUERY_PARAM] || DEFAULT_PAGE_SIZE,
           cursor: res.queryParams[CURSOR_QUERY_PARAM],
+          name: res.queryParams['name'],
+          pieceName: res.queryParams['pieceName'],
         });
       }),
       catchError((err) => {
@@ -70,11 +75,29 @@ export class ConnectionsTableDataSource extends DataSource<FlowRun> {
       }),
       tap((res) => {
         this.isLoading$.next(false);
-        this.paginator.next = res.next;
-        this.paginator.previous = res.previous;
+        this.paginator.setNextAndPrevious(res.next, res.previous);
         this.data = res.data;
       }),
-      map((res) => res.data)
+      switchMap((res) => {
+        const logos: Observable<string | undefined>[] = res.data.map((item) =>
+          this.pieceMetadataService
+            .getPieceMetadata(item.pieceName, undefined)
+            .pipe(
+              take(1),
+              map((metadata) => metadata.logoUrl)
+            )
+        );
+        return forkJoin(logos).pipe(
+          map((logos) => {
+            return res.data.map((item, index) => {
+              return {
+                ...item,
+                logoUrl: logos[index],
+              };
+            });
+          })
+        );
+      })
     );
   }
 

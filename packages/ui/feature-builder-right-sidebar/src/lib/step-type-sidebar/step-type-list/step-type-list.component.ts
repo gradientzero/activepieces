@@ -5,24 +5,28 @@ import {
   Input,
   Output,
 } from '@angular/core';
-import {
-  AuthenticationService,
-  FlowItemDetails,
-} from '@activepieces/ui/common';
+import { FlowItemDetails } from '@activepieces/ui/common';
+import { ActionBase, TriggerBase } from '@activepieces/pieces-framework';
 
 @Component({
   selector: 'app-step-type-list',
   templateUrl: './step-type-list.component.html',
-  styleUrls: ['./step-type-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StepTypeListComponent {
   @Input() typesList: FlowItemDetails[];
-  @Output() typeSelected: EventEmitter<FlowItemDetails> = new EventEmitter();
+  @Output() typeSelected: EventEmitter<{
+    flowItemDetails: FlowItemDetails;
+    suggestion?: ActionBase | TriggerBase;
+  }> = new EventEmitter();
   @Input() emptyListText: string;
-  @Input() takeFullHeightOfSidebar = true;
-  constructor(private authenticationService: AuthenticationService) {}
-  openFeedbackPopover() {
-    this.authenticationService.openFeedbackPopover$.next();
+  @Input() showRequestPieceButton: boolean | null;
+
+  requestPiece() {
+    window.open(
+      'https://www.activepieces.com/pieces-roadmap',
+      '_blank',
+      'noopener'
+    );
   }
 }

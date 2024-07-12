@@ -1,15 +1,13 @@
-import {
-  ExecutionOutputStatus,
-  FlowRun,
-  RunEnvironment,
-} from '@activepieces/shared';
+import { FlowRunStatus, FlowRun, RunEnvironment } from '@activepieces/shared';
 
 export const initializedRun: FlowRun = {
   id: '',
   projectId: '',
   flowVersionId: '',
   flowId: '',
-  status: ExecutionOutputStatus.RUNNING,
+  tags: [],
+  steps: {},
+  status: FlowRunStatus.RUNNING,
   logsFileId: '',
   startTime: '',
   finishTime: '',

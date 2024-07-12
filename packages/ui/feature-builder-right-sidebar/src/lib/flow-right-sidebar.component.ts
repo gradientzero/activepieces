@@ -11,20 +11,26 @@ import { map, Observable, of, shareReplay, switchMap, tap } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { FormControl } from '@angular/forms';
 import { CdkDragMove } from '@angular/cdk/drag-drop';
-import { ActionType, TriggerType } from '@activepieces/shared';
+import {
+  ActionType,
+  ApFlagId,
+  TriggerTestStrategy,
+  TriggerType,
+} from '@activepieces/shared';
 import {
   BuilderSelectors,
-  FlowItem,
+  Step,
   RightSideBarType,
   ViewModeEnum,
 } from '@activepieces/ui/feature-builder-store';
+import { forkJoin } from 'rxjs';
 import {
   TestStepService,
-  ActionMetaService,
-  isOverflown,
+  FlagService,
+  FlowBuilderService,
 } from '@activepieces/ui/common';
-import { TriggerStrategy } from '@activepieces/pieces-framework';
-import { BuilderAutocompleteMentionsDropdownService } from '@activepieces/ui/feature-builder-form-controls';
+import { BuilderAutocompleteMentionsDropdownService } from '@activepieces/ui/common';
+import { PieceMetadataService } from '@activepieces/ui/feature-pieces';
 
 @Component({
   selector: 'app-flow-right-sidebar',
@@ -32,14 +38,13 @@ import { BuilderAutocompleteMentionsDropdownService } from '@activepieces/ui/fea
   styleUrls: ['./flow-right-sidebar.component.scss'],
 })
 export class FlowRightSidebarComponent implements OnInit {
-  isOverflown = isOverflown;
   ActionType = ActionType;
   TriggerType = TriggerType;
   rightSidebarType$: Observable<RightSideBarType>;
   testFormControl: FormControl<string> = new FormControl('', {
     nonNullable: true,
   });
-  currentStep$: Observable<FlowItem | null | undefined>;
+  currentStep$: Observable<Step | null | undefined>;
   editStepSectionRect: DOMRect;
   @ViewChild('editStepSection', { read: ElementRef })
   editStepSection: ElementRef;
@@ -47,14 +52,15 @@ export class FlowRightSidebarComponent implements OnInit {
   selectedStepResultContainer: ElementRef;
   elevateResizer$: Observable<void>;
   animateSectionsHeightChange = false;
-  isCurrentStepPollingTrigger$: Observable<boolean>;
+  triggerSupportsLoadingTestData$: Observable<boolean>;
   isResizerGrabbed = false;
-  isCurrentStepPieceWebhookTrigger$: Observable<boolean>;
+  triggerSupportsSimulation$: Observable<boolean>;
   viewMode$: Observable<ViewModeEnum>;
   ViewModeEnum = ViewModeEnum;
+  showDocs$: Observable<boolean>;
   currentStepPieceVersion$: Observable<
     | {
-        version: string;
+        version: string | undefined;
         latest: boolean;
         tooltipText: string;
       }
@@ -65,18 +71,21 @@ export class FlowRightSidebarComponent implements OnInit {
     private ngZone: NgZone,
     private testStepService: TestStepService,
     private renderer2: Renderer2,
-    private actionMetaDataService: ActionMetaService,
+    private flagService: FlagService,
+    private pieceMetadataService: PieceMetadataService,
+    public builderService: FlowBuilderService,
     private builderAutocompleteMentionsDropdownService: BuilderAutocompleteMentionsDropdownService
   ) {}
 
   ngOnInit(): void {
+    this.showDocs$ = this.flagService.isFlagEnabled(ApFlagId.SHOW_DOCS);
     this.checkCurrentStepPieceVersion();
     this.rightSidebarType$ = this.store.select(
       BuilderSelectors.selectCurrentRightSideBarType
     );
     this.listenToStepChangeAndAnimateResizer();
-    this.checkIfCurrentStepIsPollingTrigger();
-    this.checkIfCurrentStepIsPieceWebhookTrigger();
+    this.checkIfTriggerSupportsLoadingTestData();
+    this.checkIfTriggerSupportsSimulation();
     this.checkForViewMode();
   }
 
@@ -84,54 +93,31 @@ export class FlowRightSidebarComponent implements OnInit {
     this.viewMode$ = this.store.select(BuilderSelectors.selectViewMode);
   }
 
-  private checkIfCurrentStepIsPollingTrigger() {
-    this.isCurrentStepPollingTrigger$ = this.currentStep$.pipe(
-      switchMap((step) => {
-        if (
-          step &&
-          step.type === TriggerType.PIECE &&
-          step.settings.pieceName !== 'schedule'
-        ) {
-          return this.actionMetaDataService
-            .getPieceMetadata(
-              step.settings.pieceName,
-              step.settings.pieceVersion
-            )
-            .pipe(
-              map((res) => {
-                return (
-                  res.triggers[step.settings.triggerName] &&
-                  res.triggers[step.settings.triggerName].type ===
-                    TriggerStrategy.POLLING
-                );
-              })
-            );
-        }
-        return of(false);
-      })
+  private checkIfTriggerSupportsLoadingTestData() {
+    this.triggerSupportsLoadingTestData$ = this.checkTriggerTestStrategyIs(
+      TriggerTestStrategy.TEST_FUNCTION
     );
   }
 
-  private checkIfCurrentStepIsPieceWebhookTrigger() {
-    this.isCurrentStepPieceWebhookTrigger$ = this.currentStep$.pipe(
+  private checkIfTriggerSupportsSimulation() {
+    this.triggerSupportsSimulation$ = this.checkTriggerTestStrategyIs(
+      TriggerTestStrategy.SIMULATION
+    );
+  }
+
+  private checkTriggerTestStrategyIs(strategy: TriggerTestStrategy) {
+    return this.currentStep$.pipe(
       switchMap((step) => {
-        if (
-          step &&
-          step.type === TriggerType.PIECE &&
-          step.settings.pieceName !== 'schedule'
-        ) {
-          return this.actionMetaDataService
+        if (step && step.type === TriggerType.PIECE) {
+          return this.pieceMetadataService
             .getPieceMetadata(
               step.settings.pieceName,
               step.settings.pieceVersion
             )
             .pipe(
               map((res) => {
-                return (
-                  res.triggers[step.settings.triggerName] &&
-                  res.triggers[step.settings.triggerName].type ===
-                    TriggerStrategy.WEBHOOK
-                );
+                const pieceTrigger = res.triggers[step.settings.triggerName];
+                return pieceTrigger?.testStrategy === strategy;
               })
             );
         }
@@ -162,27 +148,39 @@ export class FlowRightSidebarComponent implements OnInit {
       );
   }
 
-  private checkCurrentStepPieceVersion() {
+  checkCurrentStepPieceVersion() {
     this.currentStepPieceVersion$ = this.store
       .select(BuilderSelectors.selectCurrentStepPieceVersionAndName)
       .pipe(
         switchMap((res) => {
           if (res) {
-            return this.actionMetaDataService.getPiecesManifest().pipe(
-              map((manifest) => {
-                const piece = manifest.find((p) => p.name === res?.pieceName);
-                if (piece && piece.version === res?.version) {
+            return forkJoin([
+              this.pieceMetadataService.getPieceMetadata(
+                res.pieceName,
+                res.version
+              ),
+              this.pieceMetadataService.getPieceMetadata(
+                res.pieceName,
+                undefined
+              ),
+            ]).pipe(
+              map(([pieceManifest, latestVersion]) => {
+                if (
+                  pieceManifest &&
+                  pieceManifest.version === latestVersion.version
+                ) {
                   return {
-                    version: res.version,
+                    version: pieceManifest.version,
                     latest: true,
-                    tooltipText: `You are using the latest version of ${piece.displayName}. Click to learn more`,
+                    tooltipText: `You are using the latest version of ${pieceManifest.displayName}. Click to learn more`,
                   };
                 }
+
                 return {
-                  version: res.version,
+                  version: pieceManifest.version,
                   latest: false,
                   tooltipText:
-                    `You are using an old version of ${piece?.displayName}. Click to learn more` ||
+                    `You are using an old version of ${pieceManifest?.displayName}. Click to learn more` ||
                     ``,
                 };
               })
@@ -192,6 +190,7 @@ export class FlowRightSidebarComponent implements OnInit {
         })
       );
   }
+
   get sidebarType() {
     return RightSideBarType;
   }
@@ -237,7 +236,8 @@ export class FlowRightSidebarComponent implements OnInit {
   openVersionDocs() {
     window.open(
       'https://www.activepieces.com/docs/pieces/versioning',
-      '_blank'
+      '_blank',
+      'noopener'
     );
   }
   @HostListener('window:resize', ['$event'])
@@ -245,7 +245,7 @@ export class FlowRightSidebarComponent implements OnInit {
     if (this.editStepSection && this.selectedStepResultContainer) {
       this.editStepSectionRect =
         this.editStepSection.nativeElement.getBoundingClientRect();
-      this.resizerDragged({ distance: { y: 99999999999, x: 0 } });
+      this.resizerDragged({ distance: { y: 99999, x: 0 } });
     }
   }
 }

@@ -1,12 +1,16 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormControl } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import {
+  CURSOR_QUERY_PARAM,
   DEFAULT_PAGE_SIZE,
   LIMIT_QUERY_PARAM,
+  NEXT_QUERY_PARAM,
   PAGE_SIZES,
+  PREVIOUS_QUERY_PARAM,
 } from '../../utils/tables.utils';
+import { NavigationService } from '../../service';
 
 @Component({
   selector: 'ap-paginator',
@@ -16,9 +20,13 @@ export class ApPaginatorComponent implements OnInit {
   @Input() pageSizes: number[] = PAGE_SIZES;
   @Output() pageChanged: EventEmitter<string> = new EventEmitter();
   @Output() pageSizeChanged: EventEmitter<number> = new EventEmitter();
+  cursor?: string;
   pageSizeChanged$!: Observable<number>;
   pageSizeControl!: FormControl<number>;
-  constructor(private router: Router, private route: ActivatedRoute) {}
+  constructor(
+    private navigationService: NavigationService,
+    private route: ActivatedRoute
+  ) {}
   previous: string | null = null;
   next: string | null = null;
   ngOnInit(): void {
@@ -28,29 +36,43 @@ export class ApPaginatorComponent implements OnInit {
     this.pageSizeChanged$ = this.pageSizeControl.valueChanges.pipe(
       tap((val) => {
         this.pageSizeChanged.emit(val);
-        this.router.navigate(['.'], {
-          relativeTo: this.route,
-          queryParams: { limit: val, cursor: undefined },
-          queryParamsHandling: 'merge',
+        this.navigationService.navigate({
+          route: ['.'],
+          extras: {
+            relativeTo: this.route,
+            queryParams: {
+              [LIMIT_QUERY_PARAM]: val,
+              [CURSOR_QUERY_PARAM]: undefined,
+              [NEXT_QUERY_PARAM]: undefined,
+              [PREVIOUS_QUERY_PARAM]: undefined,
+            },
+            queryParamsHandling: 'merge',
+            preserveFragment: true,
+          },
         });
       })
     );
-
-    const pageSize = Number.parseInt(
-      this.route.snapshot.queryParamMap.get(LIMIT_QUERY_PARAM) || '0'
-    );
-    this.pageSizeControl.setValue(pageSize || DEFAULT_PAGE_SIZE);
   }
-  setQueryParams(cursor: string) {
-    const params: { [key: string]: string | number } = {
-      limit: this.pageSizeControl.value,
-      cursor: cursor,
-    };
 
-    this.router.navigate(['.'], {
-      relativeTo: this.route,
-      queryParams: params,
-      queryParamsHandling: 'merge',
+  setCursor(cursor: string) {
+    const params: { [key: string]: string | number } = {
+      [LIMIT_QUERY_PARAM]: this.pageSizeControl.value,
+      [CURSOR_QUERY_PARAM]: cursor,
+    };
+    this.cursor = cursor;
+    this.navigationService.navigate({
+      route: ['.'],
+      extras: {
+        relativeTo: this.route,
+        queryParams: params,
+        queryParamsHandling: 'merge',
+        preserveFragment: true,
+      },
     });
+  }
+
+  setNextAndPrevious(next: string | null, previous: string | null) {
+    this.next = next;
+    this.previous = previous;
   }
 }

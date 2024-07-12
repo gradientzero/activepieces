@@ -1,5 +1,5 @@
 <div class="ap-w-full ap-flex ap-items-center ap-gap-2.5 ap-justify-center">
-  <div class="ap-typography-caption">Page Size:</div>
+  <div class="ap-typography-caption" i18n>Page Size:</div>
   <mat-form-field class="ap-max-w-[70px]" subscriptSizing="dynamic">
     <mat-select [formControl]="pageSizeControl">
       <mat-option *ngFor="let size of pageSizes" [value]="size">
@@ -8,13 +8,13 @@
     </mat-select>
   </mat-form-field>
   <button mat-icon-button matTooltip="Back" matTooltipPosition="below" [disabled]="!previous"
-    (click)="pageChanged.emit(previous!); setQueryParams(previous!)">
+    (click)="pageChanged.emit(previous!); setCursor(previous!)">
     <svg-icon [svgStyle]="{ width: '20px', height: '20px' }" class="ap-flex ap-justify-center ap-items-center"
       src="assets/img/custom/paginator/back.svg">
     </svg-icon>
   </button>
   <button mat-icon-button matTooltip="Next" matTooltipPosition="below" [disabled]="!next"
-    (click)="pageChanged.emit(next!); setQueryParams(next!)">
+    (click)="pageChanged.emit(next!); setCursor(next!)">
     <svg-icon [svgStyle]="{ width: '20px', height: '20px' }" class="ap-flex ap-justify-center ap-items-center"
       src="assets/img/custom/paginator/next.svg">
     </svg-icon>

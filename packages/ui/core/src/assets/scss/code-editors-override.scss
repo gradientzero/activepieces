@@ -1,3 +1,4 @@
+@import url('./json-editor-override.scss');
 .code .editor-container {
   height: 300px;
 }
@@ -14,10 +15,6 @@ code-height-auto .CodeMirror {
   font-size: 14px !important;
 }
 
-.console-size .CodeMirror {
-  min-width: 400px !important;
-  min-height: 100% !important;
-}
 
 .code-size-200 .CodeMirror {
   min-height: 100px !important;
@@ -39,10 +36,6 @@ code-height-auto .CodeMirror {
   }
 }
 
-.size-to-content .CodeMirror {
-  height: unset;
-  min-height: unset;
-}
 
 .code-height-auto .CodeMirror {
   min-height: 100% !important;
@@ -53,7 +46,6 @@ code-height-auto .CodeMirror {
 }
 
 .console-size .CodeMirror {
-  min-width: 400px !important;
   min-height: 100% !important;
 }
 
@@ -73,28 +65,17 @@ code-height-auto .CodeMirror {
   }
 }
 
-.size-to-content .CodeMirror {
-  height: unset;
-  min-height: unset;
-}
 
 .CodeMirror-scroll {
   padding-top: 10px;
 }
 
-.cm-s-lucario .CodeMirror-linenumber {
-  color: #507495;
-  padding: 0px 10px 0px 5px;
-}
 
 .modal-fullscreen app-code-editor {
   height: 100%;
 }
 
-.code-editor .CodeMirror-gutters {
-  border-right: unset !important;
-  background-color: unset !important;
-}
+
 
 pre {
   overflow: auto;
@@ -102,6 +83,13 @@ pre {
 
 ngx-monaco-editor {
   overflow: visible;
+  .editor-container
+  {
+    height: 100% !important;
+    border-bottom-right-radius: 5px;
+    border-bottom-left-radius: 5px;
+    overflow: hidden;
+  }
 }
 
 .CodeMirror-lint-tooltip {
@@ -114,15 +102,15 @@ ngx-monaco-editor {
 }
 
 .bar-containing-beautify-button {
-  background-color: #2b3e50;
   border-top-left-radius: 5px;
   border-top-right-radius: 5px;
   margin-bottom: -3px;
 }
 
-.json-editor .CodeMirror-gutter-wrapper {
-  left: -41px !important;
+
+
+.white-nums-column .monaco-editor .margin {
+  background-color: var(--white);
 }
-.json-editor .CodeMirror-gutters {
-  left: 0px !important;
-}
+
+
