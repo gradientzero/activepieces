@@ -4,7 +4,9 @@ import { flowService } from '../flows/flow/flow.service'
 import { webhookService } from '../webhooks/webhook-service'
 import { AppEventRouting } from './app-event-routing.entity'
 import { appEventRoutingService } from './app-event-routing.service'
+import { ecomonNew } from '@activepieces/piece-ecomon-new'
 import { facebookLeads } from '@activepieces/piece-facebook-leads'
+import { fiesdaNew } from '@activepieces/piece-fiesda-new'
 import { slack } from '@activepieces/piece-slack'
 import { square } from '@activepieces/piece-square'
 import { Piece } from '@activepieces/pieces-framework'
@@ -20,12 +22,16 @@ const appWebhooks: Record<string, Piece> = {
     slack,
     square,
     'facebook-leads': facebookLeads,
+    ecomonNew,
+    fiesdaNew,
 }
 
 const pieceNames: Record<string, string> = {
     slack: '@activepieces/piece-slack',
     square: '@activepieces/piece-square',
     'facebook-leads': '@activepieces/piece-facebook-leads',
+    ecomonNew: '@activepieces/piece-ecomon-new',
+    fiesdaNew: '@activepieces/piece-fiesda-new',
 }
 
 export const appEventRoutingModule: FastifyPluginAsyncTypebox = async (app) => {
